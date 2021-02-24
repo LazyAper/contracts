@@ -2,7 +2,7 @@
 
 LYPTUS Token : 
 
-Address : xba26397cdff25f0d26e815d218ef3c77609ae7f1
+Address : 0xba26397cdff25f0d26e815d218ef3c77609ae7f1
 
 BSC contract code : https://bscscan.com/address/0xba26397cdff25f0d26e815d218ef3c77609ae7f1#code
 
