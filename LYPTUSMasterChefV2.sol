@@ -82,6 +82,7 @@ contract MasterChefV2 is Ownable, ReentrancyGuard {
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
+	// V2 Certik CTK-KOALA-5 remark - add event for these function
     event SetFeeAddress(address indexed user, address indexed newAddress);
     event SetDevAddress(address indexed user, address indexed newAddress);
     event UpdateEmissionRate(address indexed user, uint256 goosePerBlock);
@@ -104,6 +105,7 @@ contract MasterChefV2 is Ownable, ReentrancyGuard {
         return poolInfo.length;
     }
 
+	// V2 Certik CTK-KOALA-6 remark - add a check for avoid duplicate lptoken
     mapping(IBEP20 => bool) public poolExistence;
     modifier nonDuplicated(IBEP20 _lpToken) {
         require(poolExistence[_lpToken] == false, "nonDuplicated: duplicated");
@@ -112,7 +114,8 @@ contract MasterChefV2 is Ownable, ReentrancyGuard {
 
     // Add a new lp to the pool. Can only be called by the owner.
     function add(uint256 _allocPoint, IBEP20 _lpToken, uint16 _depositFeeBP, bool _withUpdate) public onlyOwner nonDuplicated(_lpToken) {
-        require(_depositFeeBP <= 10000, "add: invalid deposit fee basis points");
+        // V2 Deposit fees limited to maximum 10% No way for owner to keep 100% of deposit fees
+		require(_depositFeeBP <= 1000, "add: invalid deposit fee basis points");
         if (_withUpdate) {
             massUpdatePools();
         }
@@ -185,7 +188,7 @@ contract MasterChefV2 is Ownable, ReentrancyGuard {
         pool.lastRewardBlock = block.number;
     }
 
-    // Deposit LP tokens to MasterChef for EGG allocation.
+    // Deposit LP tokens to MasterChef for LYPTUS allocation.
     function deposit(uint256 _pid, uint256 _amount) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -200,8 +203,9 @@ contract MasterChefV2 is Ownable, ReentrancyGuard {
             pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
             if (pool.depositFeeBP > 0) {
                 uint256 depositFee = _amount.mul(pool.depositFeeBP).div(10000);
-                pool.lpToken.safeTransfer(feeAddress, depositFee);
-                user.amount = user.amount.add(_amount).sub(depositFee);
+                // Certik report CTK-KOALA-3 remark - inverse user.amount and pool.lptoken line
+				user.amount = user.amount.add(_amount).sub(depositFee);
+				pool.lpToken.safeTransfer(feeAddress, depositFee);                
             } else {
                 user.amount = user.amount.add(_amount);
             }
@@ -248,26 +252,30 @@ contract MasterChefV2 is Ownable, ReentrancyGuard {
         } else {
             transferSuccess = lyptus.transfer(_to, _amount);
         }
-        require(transferSuccess, "safeEggTransfer: transfer failed");
+		// Certik CTK-KOALA-4 remark check the return of transfer
+        require(transferSuccess, "safeLyptusTransfer: transfer failed");
     }
 
     // Update dev address by the previous dev.
     function dev(address _devaddr) public {
         require(msg.sender == devaddr, "dev: wut?");
         devaddr = _devaddr;
+		// V2 Certik CTK-KOALA-7 remark - add emit for these data
         emit SetDevAddress(msg.sender, _devaddr);
     }
 
     function setFeeAddress(address _feeAddress) public {
         require(msg.sender == feeAddress, "setFeeAddress: FORBIDDEN");
         feeAddress = _feeAddress;
+		// V2 Certik CTK-KOALA-7 remark - add emit for these data
         emit SetFeeAddress(msg.sender, _feeAddress);
     }
 
-    //Pancake has to add hidden dummy pools inorder to alter the emission, here we make it simple and transparent to all.
+    //KoalaDeFi has to add hidden dummy pools inorder to alter the emission, here we make it simple and transparent to all.
     function updateEmissionRate(uint256 _lyptusPerBlock) public onlyOwner {
         massUpdatePools();
         lyptusPerBlock = _lyptusPerBlock;
+		// V2 Certik CTK-KOALA-7 remark - add emit for these data
 		emit UpdateEmissionRate(msg.sender, _lyptusPerBlock);
     }
 }
